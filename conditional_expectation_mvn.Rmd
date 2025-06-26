@@ -1,0 +1,423 @@
+---
+title: "STAT 326/426 - Homework 2"
+author: "Ilke Kas"
+date: "Due: Monday, February 24, 2025, by 23:59"
+output: pdf_document
+---
+
+## Instructions
+
+All homework assignments involving R in this course should be done using RMarkdown. Proofs can be handwritten or typed in LaTeX, preferably. You need to upload your final solution in PDF format. Uploading different file formats will result in a zero score.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1 (3 points)
+
+Let $X$ be a $p$-dimensional random vector with mean and variance given by:
+
+\[ E(X) = \mu, \quad \Sigma = E[(X - \mu)(X - \mu)^\top] \]
+
+Show that:
+
+\[ \text{Var}(AX) = A \Sigma A^\top \]
+
+where $A \in \mathbb{R}^{d \times p}$ is a constant matrix.
+
+**Solution:**
+Since $A$ is a constant matrix, we know that the expected value of it can be expressed like this:
+\[
+  E(AX) = A \cdot \mu \tag{1} \label{expectation_mat}
+\]
+
+We know the variance is calculated as in the following for the random vectors:
+
+\[
+  Var(AX) = E[(AX-E(AX))\cdot(AX-E(AX))^\top] \tag{2} \label{var_1}
+\]
+If we substitute the $E(AX)$ in equation \eqref{var_1} with  equation \eqref{expectation_mat}, we will get:
+\[
+  Var(AX) = E[(AX-A\mu) \cdot (AX-A\mu)] \tag{3} \label{var_2}
+\]
+Realize that we can factor out the A constants in equation \eqref{var_3} as in the following:
+
+\[
+  Var(AX) = E [A \cdot (X-\mu) \cdot (X-\mu)^\top A^\top] \tag{4} \label{var_3}
+\]
+
+Again, by using the fact that in equation \eqref{expectation_mat}, we can rewrite the equation \eqref{var_3} as in the following:
+
+\[
+  Var(AX)  = A \cdot E[(X-\mu)(X-\mu)^\top] A^\top \tag{5} \label{var_4}
+\]
+
+In the question definition we already know that $\Sigma$ is defined as:
+\[
+  \Sigma = E[(X - \mu)(X - \mu)^\top] \tag{6} \label{var_5}
+\]
+Therefore, if we substitute the expression $E[(X-\mu)(X-\mu)^T]$ in the equation \eqref{var_4} with the $\Sigma$ by using the fact in equation \eqref{var_5}, we show what is asked for:
+
+\[
+  \text{Var}(AX) = A \Sigma A^\top \tag{7} \label{var_6}
+\]
+
+## Problem 2 (7 points)
+
+Suppose $X \in \mathbb{R}^p$ and $Y \in \mathbb{R}^q$ and:
+
+\[ \begin{pmatrix} X \\ Y \end{pmatrix} \sim N_{p+q} \left( \begin{pmatrix} \mu_X \\ \mu_Y \end{pmatrix}, \begin{pmatrix} \Sigma_{XX} & \Sigma_{XY} \\ \Sigma_{YX} & \Sigma_{YY} \end{pmatrix} \right) \]
+
+where $\Sigma_{XX}$ and $\Sigma_{YY}$ are positive definite.
+
+### (i) Find $E(Y|X)$
+**Solution:**
+\[
+  E(Y|X) = \mu_Y + \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot (X-\mu_X) \tag{8} \label{cond_1}
+\]
+
+### (ii) Find $E(X|Y)$
+**Solution:**
+\[
+  E(X|Y) = \mu_X + \Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot (Y-\mu_Y) \tag{9} \label{cond_2}
+\]
+
+### (iii) What is $\text{Var}(Y|X)$?
+**Solution:**
+\[
+  Var(Y|X) =  \Sigma_{YY} - \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot \Sigma_{XY} \tag{10} \label{cond_3}
+\]
+
+
+### (iv) What is $\text{Var}(X|Y)$?
+**Solution:**
+\[
+  Var(X|Y) =  \Sigma_{XX} - \Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot \Sigma_{YX} \tag{11} \label{cond_4}
+\]
+
+### (v) Suppose $E(Y|X) = \beta_0 + \beta_1^\top X$. What will be the expressions for $\beta_0$ and $\beta_1$ based on your answer in (i)?
+**Solution:**
+We already know the E(Y|X) from part (i) in equation \eqref{cond_1}. Let's rearrange this equation by expanding term $\Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot (X-\mu_X)$:
+
+\[
+    E(Y|X) = \mu_Y + \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot X-  \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot \mu_X  \\
+    = (\mu_Y -  \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot \mu_X)  + (\Sigma_{YX} \cdot \Sigma_{XX}^{-1}) \cdot X \tag{12} \label{cond_5}
+\]
+When we write the E(Y|X) as in the equation \eqref{cond_5}, realize that the $\beta_0$ and $\beta_1$ values can be expressed as in the following:
+\[
+  \beta_0 = \mu_Y -  \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \cdot \mu_X \tag{13} \label{cond_6}
+\]
+
+and
+\[
+  \beta_1 = \Sigma_{YX} \cdot \Sigma_{XX}^{-1} \tag{14} \label{cond_7}
+\]
+
+### (vi) Suppose $E(X|Y) = \alpha_0 + \alpha_1^\top Y$. What will be the expressions for $\alpha_0$ and $\alpha_1$ based on your answer in (ii)?
+
+We already know the E(X|Y) from part (ii) in equation \eqref{cond_2}. Let's rearrange this equation by expanding term $\Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot (Y-\mu_Y)$:
+
+\[
+     E(X|Y) = \mu_X + \Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot Y-\Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot \mu_Y  \\
+    = (\mu_X  -\Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot \mu_Y ) + (\Sigma_{XY} \cdot \Sigma_{YY}^{-1}) \cdot Y
+ \tag{15} \label{cond_8} \]
+When we write the E(X|Y) as in the equation \eqref{cond_8}, realize that the $\alpha_0$ and $\alpha_1$ values can be expressed as in the following:
+\[
+  \alpha_0 = \mu_X  -\Sigma_{XY} \cdot \Sigma_{YY}^{-1} \cdot \mu_Y \tag{16} \label{cond_9}
+\]
+
+and
+\[
+  \alpha_1 = \Sigma_{XY} \cdot \Sigma_{YY}^{-1} \tag{17} \label{cond_10}
+\]
+
+### (vii) From your answers in (v) and (vi), does regressing $Y$ on $X$ yield the same results as regressing $X$ on $Y$?
+**Solution:**
+Regressing `Y` on `X` does not give us the same results as regressing `X` on `Y`. This is because the relationships and how one depends on the other are different in each case, which we can see in the different coefficients and intercepts for each regression. When we regress `Y` on `X`, we are trying to predict `Y` based on `X`. The coefficients show how much `Y` changes with a change in `X`. However, regressing `X` on `Y` is about predicting `X` using `Y`.
+
+
+## Problem 3 (5 points)
+
+Let $X \sim N_4(\mu, \Sigma)$, where:
+
+\[ \mu = \begin{pmatrix} 4 \\ 1 \\ -5 \\ 2 \end{pmatrix}, \quad \Sigma = \begin{bmatrix} 3 & -2 & 0 & 1 \\ -2 & 5 & 0 & 2 \\ 0 & 0 & 2 & -1 \\ 1 & 2 & -1 & 9 \end{bmatrix} \]
+
+### (i) Find the distribution of the following variables and determine if the variables are independent.
+
+- (a) $X_1$ and $X_3$
+
+**Solution:**
+We know that all subsets of the components of X have a multivariate normal distribution. For marginal ones, they also have normal distribution. Therefore, by using the corresponding means and the variances given in the question, we can find the distribution of $X_1$ and $X_3$ :
+
+\[
+  X_1 \sim N(\mu = 4, \sigma^2 = 3) \tag{18} \label{distr_1}
+\]
+and 
+\[
+  X_3 \sim N(\mu = -5, \sigma^2 = 2) \tag{19} \label{distr_2}
+\]
+In order to see whether they are independent we can look at the covariance value $\Sigma_{13}$ since we know that zero covariance implies that the corresponding components are independent. As seen from  $\Sigma_{13} = 0$, we can say that $X_1$ and $X_3$ are independent.
+
+- (b) $\begin{pmatrix} X_1 \\ X_2 \end{pmatrix}$ and $X_3$
+
+**Solution:**
+We know that all subsets of the components of X have a multivariate normal distribution. Since $\begin{pmatrix} X_1 \\ X_2 \end{pmatrix}$ is subset of X, we need to get the corresponding mean and the covariance matrix from $\mu$ and $\Sigma$ matrices provided in the question.
+
+\[
+\begin{pmatrix} X_1 \\ X_2 \end{pmatrix} \sim N(\mu = \begin{pmatrix} 4 \\ 1 \end{pmatrix}, \Sigma = \begin{pmatrix} 3 \quad -2 \\ -2 \quad 5\end{pmatrix}  ) \tag{20} \label{distr_3}
+\]
+From the previous question, we know that: 
+\[
+ X_3 \sim N(\mu = -5, \sigma^2 = 2)
+\]
+Let's look at the dependency of this. As we mentioned, since zero covariance implies that the corresponding components are independent, we need to look at the covariance of these components:
+
+\[
+  \Sigma_{(X_1,X_2),X_3} = (X^{(1)} - \mu^{(1)} ) \cdot (X^{(2)} - \mu^{(2)} ) \tag{21} \label{distr_4}
+\]
+where $X^{(1)} = \begin{pmatrix} X_1 \\ X_2 \end{pmatrix}$  and $X^{(2)} =  X_3$
+\[
+  \Sigma_{(X_1,X_2),X_3}=  \begin{pmatrix} X_1 -4 \\ X_2 -1 \end{pmatrix} \cdot \begin{pmatrix} X_3+5 \end{pmatrix} \\
+  = \begin{pmatrix} (X_1 -4) \cdot (X_3 +5) \\ (X_2 -1) \cdot (X_3 + 5) \end{pmatrix} \tag{22} \label{distr_5}
+\]
+Realize that 
+\[
+  \Sigma_{(X_1,X_2),X_3}=  \begin{pmatrix}  \Sigma_{13} \\ \Sigma_{23}\end{pmatrix} \tag{23} \label{distr_6}
+\]
+Again by using the corresponding means and the variances given in the question, we can find that: 
+\[
+  \Sigma_{(X_1,X_2),X_3}=  \begin{pmatrix}  \Sigma_{13} \\ \Sigma_{23}\end{pmatrix} = \begin{pmatrix}  0 \\ 0 \end{pmatrix} \tag{24} \label{distr_7}
+\]
+Therefore, we can say that $\begin{pmatrix} X_1 \\ X_2 \end{pmatrix}$ and $X_3$ are independent.
+
+- (c) $Y = X_1 - \frac{1}{3}X_2 - \frac{1}{3}X_3$ and $Z = X_2 - \frac{1}{2}X_4$
+
+**Solution:**
+
+Let's start by finding the distributions of Y and Z.
+
+\[
+  \mu_Y = E(Y) = E(X_1 - \frac{1}{3}X_2 - \frac{1}{3}X_3 ) \tag{25} \label{distr_8}
+\]
+
+We can use the linearity property of the expected value:
+
+\[
+  \mu_Y = E(Y) = E(X_1) - \frac{1}{3} \cdot E(X_2 )- \frac{1}{3} \cdot E(X_3 ) \\
+  = 4 - \frac{1}{3} \cdot 1 + \frac{1}{3} \cdot 5 = \frac{16}{3} \tag{26} \label{distr_9}
+\]
+
+We know that the $Var(a X + b  Y) = a^2  Var(X) + b^2 Var(Y) - 2ab  Cov(X,Y)$. By using this fact, we can calculate the variance for our linear combination as in the following:
+\[
+  Var(Y) = Var(X_1) + \frac{1}{9} \cdot Var(X_2) + \frac{1}{9} \cdot Var(X_3) - \frac{2}{3} \cdot Cov(X_1,X_2) - \frac{2}{3} \cdot Cov(X_1,X_3) + \frac{2}{9} \cdot Cov(X_2,X_3) \tag{27} \label{distr_10}
+\]
+
+\[
+  Var(Y) = 3 + \frac{1}{9} \cdot 5 + \frac{1}{9} \cdot 2 - \frac{2}{3} \cdot (-2) - \frac{2}{3} \cdot 0 + \frac{2}{9} \cdot 0 = \frac{46}{9} \tag{28} \label{distr_11}
+\]
+Therefore, we can say that the distribution of Y is:
+
+\[
+ Y \sim N(\frac{16}{3}, \frac{46}{9}) \tag{29} \label{distr_12}
+\]
+
+Now, Let's find the distribution of the $Z = X_2 - \frac{1}{2}X_4$:
+
+\[
+\mu_Z = E(Z) = E(X_2 - \frac{1}{2}X_4) \tag{30} \label{distr_13}
+\]
+
+We can use the linearity property of the expected value:
+\[
+\mu_Z = E(Z) = E(X_2) -  \frac{1}{2} \cdot E(X_4) = 1 - \frac{1}{2} \cdot 2 = 0 \tag{31} \label{distr_14}
+\]
+
+We know that the $Var(a X + b  Y) = a^2  Var(X) + b^2 Var(Y) - 2ab  Cov(X,Y)$. By using this fact, we can calculate the variance for our linear combination as in the following:
+
+\[
+Var(Z) = Var(X_2) + \frac{1}{4} \cdot Var(X_4) - Cov(X_2,X_4) = 5 + \frac{1}{4} \cdot 9 - 2= \frac{21}{4}  \tag{32} \label{distr_15}
+\]
+
+Therefore, we can say that the distribution of Z is:
+
+\[
+ z \sim N(0, \frac{21}{4}) \tag{33} \label{distr_16}
+\]
+Now, it is time to check the dependency of Y and Z:
+In order to check whether they are independent or not, we need to check whether the covariance of these two equal to 0 or not.
+\[
+  Cov(Y,Z) = Cov( X_1 - \frac{1}{3}X_2 - \frac{1}{3}X_3, X_2 - \frac{1}{2}X_4) \tag{34} \label{distr_17}
+\]
+By using the linearity property of the covariance, we can calculate this in more simplified way:
+
+\[
+    Cov(Y,Z) = Cov( X_1 , X_2 - \frac{1}{2}X_4) - \frac{1}{3}Cov(X_2, X_2 - \frac{1}{2}X_4)  - \frac{1}{3} Cov(X_3, X_2 - \frac{1}{2}X_4) \tag{35} \label{distr_18}
+\]
+Let's use the linearity property again to simplify each term again:
+\[
+    Cov(Y,Z) =  Cov( X_1 , X_2) - \frac{1}{2}Cov(X_1,X_4) - \frac{1}{3}Cov(X_2, X_2) + \frac{1}{6} Cov(X_2,X_4)  - \frac{1}{3} Cov(X_3, X_2) + \frac{1}{6}Cov(X_3,X_4) \tag{36} \label{distr_19}
+\]
+If we substitute the provided values in the question text, we will get:
+\[
+    Cov(Y,Z) =  -2 - \frac{1}{2} \cdot 1 - \frac{1}{3}\cdot 5 + \frac{1}{6} \cdot 2  - \frac{1}{3} \cdot 0 + \frac{1}{6} \cdot -1 = -4 \tag{37} \label{distr_20}
+\]
+Since the covariance value is not zero, the Y and Z values are not independent!
+
+
+
+### (ii) Find the conditional distribution of $X_2$ given $X_1 = 2$ and $X_4 = 10$.
+
+**Solution:**
+
+In order to answer this question, we can use the parts (i) and (iii) from question 2. Let's define some intermediate random variables and call them A and B so that $A = X_2$ ans $B=\begin{pmatrix} X_1 \\ X_4 \end{pmatrix}$.
+The conditional distribution of \( A = X_2 \) given \( B = \begin{pmatrix} X_1 \\ X_4 \end{pmatrix} \) is given by:
+
+\[
+A | B \sim N \left( \mu_A + \Sigma_{AB} \Sigma_{BB}^{-1} (B - \mu_B), \quad \Sigma_{AA} - \Sigma_{AB} \Sigma_{BB}^{-1} \Sigma_{BA} \right) \tag{38} \label{distr_21}
+\]
+As first step, let's find the mean values used in the equation by using \( \mu \) provided in the question:
+\[
+\mu_A = \mu_2 = 1, \quad \mu_B = \begin{pmatrix} \mu_1 \\ \mu_4 \end{pmatrix} = \begin{pmatrix} 4 \\ 2 \end{pmatrix} \tag{39} \label{distr_22}
+\]
+
+Now, let's find the covariance data from \( \Sigma \) given in the question:
+
+\[
+\Sigma_{BB} =\begin{bmatrix} \Sigma_{11} & \Sigma_{14} \\ \Sigma_{41} & \Sigma_{44} \end{bmatrix} =\begin{bmatrix} 
+3 & 1 \\ 
+1 & 9 
+\end{bmatrix} \tag{40} \label{distr_23}
+\]
+
+\[
+\Sigma_{AB} = \begin{bmatrix} \Sigma_{21} & \Sigma_{24} \end{bmatrix} = \begin{bmatrix} -2 & 2 \end{bmatrix} \tag{41} \label{distr_24}
+\]
+
+\[
+\Sigma_{AA} = \Sigma_{22} = 5 \tag{42} \label{distr_25}
+\]
+
+The remaining step is to computing \( \Sigma_{BB}^{-1} \) by using the formula for the inverse of a 2x2 matrix:
+
+\[
+\Sigma_{BB}^{-1} = \frac{1}{(3)(9) - (1)(1)}
+\begin{bmatrix} 
+9 & -1 \\ 
+-1 & 3 
+\end{bmatrix}
+=
+\frac{1}{26} 
+\begin{bmatrix} 
+9 & -1 \\ 
+-1 & 3 
+\end{bmatrix} \tag{43} \label{distr_26}
+\]
+
+Now, we can calculate the expected value of conditional distribution as in \eqref{distr_27}. 
+\[
+E[X_2 | X_1 = 2, X_4 = 10] = \mu_A + \Sigma_{AB} \Sigma_{BB}^{-1} (B - \mu_B) \tag{44} \label{distr_27}
+\]
+
+Let's compute \( B - \mu_B \):
+
+\[
+B - \mu_B = \begin{pmatrix} 2 \\ 10 \end{pmatrix} - \begin{pmatrix} 4 \\ 2 \end{pmatrix} = \begin{pmatrix} -2 \\ 8 \end{pmatrix} \tag{45} \label{distr_28}
+\]
+
+Let's multiply \( \Sigma_{AB} \) we found in equation \eqref{distr_24} with \(\Sigma_{BB}^{-1} \) we found in equation \eqref{distr_26}:
+
+\[
+\Sigma_{AB} \Sigma_{BB}^{-1} = \begin{bmatrix} -2 & 2 \end{bmatrix} \cdot \frac{1}{26} \begin{bmatrix} 9 & -1 \\ -1 & 3 \end{bmatrix} \tag{46} \label{distr_29}
+\]
+
+\[
+\Sigma_{AB} \Sigma_{BB}^{-1} =  \frac{1}{26} \begin{bmatrix} (-2)(9) + (2)(-1), (-2)(-1) + (2)(3) \end{bmatrix} \tag{47} \label{distr_30}
+\]
+
+\[
+\Sigma_{AB} \Sigma_{BB}^{-1} = \frac{1}{26} \begin{bmatrix} -18 -2, 2 + 6 \end{bmatrix} = \frac{1}{26} \begin{bmatrix} -20 & 8 \end{bmatrix} \tag{48} \label{distr_31}
+\]
+Now, I am multiplying what I found in equation \eqref{distr_31} with \(B - \mu_B) \) we found in equation \eqref{28}:
+
+\[
+=\frac{1}{26} \begin{bmatrix} -20 & 8 \end{bmatrix} \begin{bmatrix} -2 \\ 8 \end{bmatrix} = \frac{1}{26} (-20 \times -2 + 8 \times 8) \tag{49} \label{distr_32}
+\]
+
+\[
+= \frac{1}{26} (40 + 64) = \frac{104}{26} = 4 \tag{50} \label{distr_33}
+\]
+
+So, since we know \(\mu_A\) value, let's sum it with what we find in here:
+
+\[
+E[X_2 | X_1 = 2, X_4 = 10] = 1 + 4 = 5 \tag{51} \label{distr_34}
+\]
+
+The next step is calculating the conditional variance. We know that we can calculate it by yusing the followimng formula:
+
+\[
+\text{Var}(X_2 | X_1, X_4) = \Sigma_{AA} - \Sigma_{AB} \Sigma_{BB}^{-1} \Sigma_{BA} \tag{52} \label{distr_35}
+\]
+
+Since \( \Sigma_{BA} = \Sigma_{AB}^T \):
+
+\[
+\Sigma_{AB} \Sigma_{BB}^{-1} \Sigma_{BA} = \frac{1}{26} \begin{bmatrix} -20 & 8 \end{bmatrix} \begin{bmatrix} -2 \\ 2 \end{bmatrix} \tag{53} \label{distr_36}
+\]
+
+\[
+= \frac{1}{26} (-20 \times -2 + 8 \times 2) \tag{53} \label{distr_37}
+\]
+
+\[
+= \frac{1}{26} (40 + 16) = \frac{56}{26} = \frac{28}{13} \\
+= \frac{65}{13} - \frac{28}{13} = \frac{37}{13} \tag{54} \label{distr_38}
+\]
+
+Now, since we have both expected value and the variance of the conditional distribution, we can provide the distribution by saying:
+\[
+X_2 | (X_1 = 2, X_4 = 10) \sim N \left( 5, \frac{37}{13} \right) \tag{55} \label{distr_39}
+\]
+
+## Problem 4 (5 points)
+
+The following data consists of the heights of 93 children born in Berkeley from Age 1 through 18. Use R to assess whether or not the data is distributed as a multivariate normal. Provide at least one plot to support your claim in each case.
+
+
+
+```{r}
+
+install.packages("MASS")  
+library(MASS)
+
+# Read the data
+data <- read.csv("Berkeley.csv")
+
+# Compute Mahalanobis distances for a multivariate normality check
+mahalanobis_distances <- mahalanobis(data, colMeans(data), cov(data))
+
+# Q-Q Plot 
+qqplot(qchisq(ppoints(nrow(data)), df = ncol(data)), mahalanobis_distances, 
+       main = "Chi-Square Q-Q Plot for Multivariate Normality",
+       xlab = "Theoretical Quantiles", ylab = "Mahalanobis Distances")
+abline(0, 1, col = "red")
+```
+- In this plot, I used Mahalanobis distance to check if multivariate data fits a normal distribution. We know that this distance measures how far each data point is from the mean, considering the correlation between variables. Then, when I compared these distances to a Chi-Square distribution to see how well they match up. As seen in the plot, the data points line up nicely with the reference line in the middle of the plot.This shows us that the data behaves normally in that range. However, there are some data points stray from the line at the ends.It may show some outliers. Let's look at the individual random variables now:
+
+```{r}
+par(mfrow = c(2, 2)) 
+for (i in 1:4) { 
+  qqnorm(data[, i], main = paste("Q-Q Plot Age", i), col = "blue", pch = 16, cex = 1)
+  qqline(data[, i], col = "red", lwd = 2)
+}
+for (i in 4:8) { 
+  qqnorm(data[, i], main = paste("Q-Q Plot Age", i), col = "blue", pch = 16, cex = 1)
+  qqline(data[, i], col = "red", lwd = 2)
+}
+for (i in 8:12) { 
+  qqnorm(data[, i], main = paste("Q-Q Plot Age", i), col = "blue", pch = 16, cex = 1)
+  qqline(data[, i], col = "red", lwd = 2)
+}
+
+```
+- Since we know that any subset of the multivariate random vector also have multivariate distribution, I wanted to look at the marginals ( since they also follow this rule). In here, I only printed 12 of them.  These Q-Q plots show that for most ages, the data's distribution closely follows a normal distribution as most points align well with the red line. Especially near the center. However, deviations are visible in the tails for several age groupsThis shows thatt the data might not be perfectly normal at the extreme values. Maybe some outliers or skewness. Overall, the data mostly looks normal, but the small differences at the ends could affect some kinds of statistical tests, especially those that don't handle outliers or uneven data well.
