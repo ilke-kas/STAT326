@@ -1,0 +1,232 @@
+---
+title: "Regression Modelling"
+author: "Ilke Kas"
+date: "Due: April 12, 2025"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(caret)
+library(leaps)
+library(glmnet)
+```
+
+---
+
+Load the `Carseats` data from the `ISLR2` package. Use R to answer the following:
+
+---
+
+## (i) (1 pt)
+
+**Set a seed with the numeric part of your CaseID and partition the data into 50-50 training and test sets.**
+
+```{r}
+
+set.seed(238)
+data(Carseats)
+
+# Example: create partition
+ train_id <- createDataPartition(Carseats$Sales, p = 0.5, list = FALSE)
+ train_data <- Carseats[train_id, ]
+ test_data <- Carseats[-train_id, ]
+ # Train verisinin başı
+head(train_data)
+
+# Test verisinin başı
+head(test_data)
+
+```
+_Explanation:_
+In this code segment, ı am splitting the dataset into training and testing sets. Firstly, since my case id is "ixk238", I am setting the seed for reproducibility using set.seed(238).Then, I am using the createDataPartition() function from the caret package to randomly select 50% of the rows as training data. The remaining rows form the test set, and I used the head() function to display the first few rows of each subset.
+
+
+---
+
+## (ii) (1 pt)
+
+**Fit an appropriate linear model to the training data with sales as the response and the remaining variables as predictors.**
+
+```{r}
+# Example:
+lm_model <- lm(Sales ~ ., data = train_data)
+summary(lm_model)
+```
+_Explanation:_
+
+In this code segment, I applied lm() function builds the model with Sales ~ ., where . means "use all other columns as predictors.". The summary(lm_model) function then displays detailed information about the model, including coefficients, statistical significance (p-values), R-squared value, and residual errors. The F-statistic has a very small p-value (< 2.2e-16), which means the model is statistically significant. So, at least one of the predictors is useful for predicting Sales. The adjusted R² is 0.8636, which means about 86.4% of the variability in Sales can be explained by the predictors in the model. That’s a strong fit. The model shows that CompPrice, Income, Advertising, Price, ShelveLoc, and Age significantly affect Sales, with better shelf location and lower price strongly increasing Sales. On the other hand, Population, Education, UrbanYes, and USYes are not significant predictors based on their p-values. Residuals are fairly balanced around 0, with a min of -2.76 and max of +3.37. This suggests no major outliers, but I should still check diagnostic plots to validate the assumptions.
+
+
+---
+
+## (iii) (2 pt)
+
+**Conduct a residual diagnosis of your model in (ii) and determine whether your model is a good fit. Explain your results.**
+
+```{r}
+# Example residual plots:
+par(mfrow=c(1,2))
+plot(lm_model,1:2)
+```
+
+
+_Explanation:_
+Is the model adequate?
+The diagnostic plots for the first-order linear model look pretty good overall. In the Residuals vs Fitted plot, the points are scattered fairly evenly around the zero line, which means the model captures the linear trend well and there's no clear pattern in the errors. There’s a little bit more spread for higher fitted values, but nothing too concerning. The Q-Q plot also looks nice — most of the points follow the straight line, which suggests that the residuals are roughly normally distributed. There are a couple of outliers, like points 358 and 298, but that’s pretty normal in real-world data. So, overall, the model seems to be doing a solid job. Let's look at the predictions: 
+
+```{r}
+library(pracma)
+# Predict Sales using the trained first-order model
+sales_pred <- predict(lm_model, newdata = test_data)
+
+# Assess model accuracy (RMSE)
+do.call(cbind, pracma::rmserr(test_data$Sales, sales_pred))
+
+```
+The first-order linear model performs well overall, with an RMSE of about 1.05, indicating that predictions deviate from actual Sales values by roughly one unit on average. The low NMSE (0.133) and rSTD (0.141) suggest that the model explains a large portion of the variability in the data and generalizes well. Although the MAPE is infinite due to zero or near-zero values in the test set, the other error metrics confirm that this model is a strong fit.
+
+What if I try second order, will it be better or not:
+
+```{r}
+# Second-order linear model with interactions and squared terms
+lm_model2 <- lm(Sales ~ (.)^2 + I(CompPrice^2) + I(Income^2) + I(Advertising^2) + 
+                          I(Population^2) + I(Price^2) + I(Age^2) + I(Education^2), 
+                data = train_data)
+
+summary(lm_model2)
+par(mfrow=c(1,2))
+plot(lm_model2,1:2)
+
+```
+_Explanation:_
+The second-order model shows some good signs, but it doesn't clearly outperform the first-order model. While we might expect a higher adjusted R² from a more complex model, the second-order model actually has a slightly lower adjusted R² (0.8597) compared to the first-order model (0.8636), suggesting that the added complexity didn't improve generalization. Looking at the residual plots, the Residuals vs Fitted plot appears fairly random with no clear pattern, which is a good sign, although there's still some spread that could hint at mild heteroscedasticity. The Q-Q plot shows that the residuals mostly follow the diagonal line, indicating they are approximately normally distributed, with just a few outliers. The residual standard error has also slightly increased from 1.023 in the first model to 1.037 in the second. THere are many unnecessary interaction and squared terms, which likely leads to overfitting and weak generalization. So, instead using a stepwise regression could be better since it selects a subset of predictors. 
+```{r}
+library(pracma)
+# Predict Sales using the trained first-order model
+sales_pred <- predict(lm_model2, newdata = test_data)
+
+# Assess model accuracy (RMSE)
+do.call(cbind, pracma::rmserr(test_data$Sales, sales_pred))
+
+```
+The second-order model has a higher RMSE of 1.34 compared to 1.05 from the first-order model, meaning its predictions are less accurate on average. Its NMSE (0.218) and rSTD (0.181) are also worse than the first model’s values, indicating a weaker ability to explain the variability in Sales. Overall, despite being more complex, the second-order model performs worse and likely overfits the data, making the first-order model the better choice. 
+
+## (iv) (2 pt)
+
+**Use stepwise regression to select the best model.**
+
+```{r}
+library(MASS)
+print("backward")
+full_model <- lm(Sales ~ ., data = train_data)
+backward_model <- stepAIC(full_model, direction = "backward")
+summary(backward_model)
+print("=========================================================================")
+print("forward")
+null_model <- lm(Sales ~ 1, data = train_data)
+forward_model <- stepAIC(null_model,
+                         direction = "forward",
+                         scope = list(lower = null_model, upper = full_model))
+summary(forward_model)
+print("=========================================================================")
+print("both")
+stepwise_model <- stepAIC(full_model, direction = "both")
+summary(stepwise_model)
+
+```
+
+_Explanation_
+
+The backward model started with all variables and removed the least useful ones. It ended with 8 predictors, including CompPrice, Income, Advertising, Population, Price, ShelveLoc, and Age. It has an adjusted R² of 0.8647 and residual standard error of 1.018, which are both very solid. The model is simple and excludes irrelevant variables like Urban, US, and Education.
+
+The forward selection model started with no variables and added the most significant ones step by step. It also selected the same final set of 8 variables as backward elimination. The adjusted R² and residuals are identical to the backward model, meaning both procedures converged to the same solution.
+
+The both directions method combines forward and backward steps. It also ended with the exact same model as forward and backward selection. All three methods selected the same 8 predictors and achieved the same fit and accuracy.
+
+So, all three methods produced the same final model, so they are equally good in terms of performance. The final model with 8 predictors is the best because it balances accuracy (adjusted R² = 0.8647) and simplicity, removing non-significant variables while retaining the most important ones.
+
+
+```{r}
+# Predict on test set
+pred_backward <- predict(backward_model, newdata = test_data)
+pred_forward <- predict(forward_model, newdata = test_data)
+pred_stepwise <- predict(stepwise_model, newdata = test_data)
+
+# Evaluate accuracy (using pracma::rmserr)
+print("backward")
+do.call(cbind, rmserr(test_data$Sales, pred_backward))
+print("forward")
+do.call(cbind, rmserr(test_data$Sales, pred_forward))
+print("both")
+do.call(cbind, rmserr(test_data$Sales, pred_stepwise))
+
+```
+_Explanations_
+All three models — backward, forward, and stepwise (both directions) — resulted in exactly the same model, both in terms of predictors selected and performance metrics. Since they yield the same predictive accuracy and variable set, none is better than the others in this case — they all converged to the same optimal model. So, we can confidently choose any of them, but typically stepwise (both) is preferred because it checks additions and deletions at each step, offering more flexibility in general.
+---
+
+## (v) (2 pt)
+
+**Perform variable selection using the LASSO and select the best model.**
+
+```{r}
+library(glmnet)
+
+# Prepare the data
+x_train <- model.matrix(Sales ~ ., data = train_data)[, -1]  # Remove intercept
+y_train <- train_data$Sales
+
+x_test <- model.matrix(Sales ~ ., data = test_data)[, -1]
+y_test <- test_data$Sales
+
+# Fit LASSO using cross-validation
+cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1)
+
+# Plot the cross-validated MSE
+plot(cv_lasso)
+
+# Best lambda (minimizes error)
+best_lambda <- cv_lasso$lambda.min
+best_lambda
+
+# Fit LASSO with the best lambda
+lasso_model <- glmnet(x_train, y_train, alpha = 1, lambda = best_lambda)
+
+# Coefficients of selected features
+coef(lasso_model)
+
+# Predict on test data
+lasso_pred <- predict(lasso_model, s = best_lambda, newx = x_test)
+
+# Calculate prediction accuracy
+library(pracma)
+do.call(cbind, rmserr(y_test, lasso_pred))
+
+```
+The LASSO cross-validation plot shows how the mean squared error changes with different values of the regularization parameter log(lambda). The curve reaches its minimum around log(lambda) is approximately -4.3, which corresponds to the lambda value you used (lambda = 0.0138), indicated by the left vertical dotted line. This choice minimizes the prediction error while keeping 11 variables in the model, excluding only USYes. The right vertical line represents a larger(lambda.1se), which would give a simpler model with fewer variables but slightly higher error. Overall, your selected lambda provides the best balance between model accuracy and complexity, and the earlier results confirm it performs slightly better than stepwise regression.
+---
+
+## (vi) (2 pt)
+
+**Which of the two models yield the best prediction based on your test set?**
+### Model Comparison: LASSO vs. Stepwise Regression
+
+| Metric     | LASSO        | Stepwise Regression |
+|------------|--------------|---------------------|
+| MAE        | 0.8340       | 0.8411              |
+| MSE        | 1.0959       | 1.1057              |
+| RMSE       | 1.0469       | 1.0515              |
+| MAPE       | Inf          | Inf                 |
+| NMSE       | 0.1323       | 0.1335              |
+| rSTD       | 0.1406       | 0.1412              |
+| # Variables| 11           | 12                  |
+
+**Conclusion:** LASSO performs slightly better in terms of error metrics and produces a simpler model by excluding irrelevant variables.
+
+
+_Explanation:_
+Based on the test set results, the LASSO model yields the best prediction. It has a slightly lower RMSE (1.0469 vs. 1.0515) and NMSE (0.1323 vs. 0.1335) compared to the stepwise regression models, indicating better accuracy and generalization, while also simplifying the model by eliminating an irrelevant variable (USYes).
+
+---

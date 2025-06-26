@@ -1,0 +1,205 @@
+---
+title: "Homework5"
+author: "Ilke Kas"
+date: "2025-04-22"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+##  1 
+
+Load the Khan dataset from the `ISLR2` package. Use R to answer the following:
+
+```{r}
+library(ISLR2)
+str(Khan)
+
+```
+
+**Explanation of Khan Dataset:** The Khan dataset contains gene expression data for classifying cancer types, with 2,308 genes measured per patient. xtrain/xtest are the gene expression values for training and test patients, and ytrain/ytest are their corresponding tumor type labels (1 to 4).
+
+1. Apply an appropriate discriminant analysis to the training data and estimate the prediction accuracy on the test data.
+
+**Solution:**
+
+```{r}
+library(MASS)
+
+
+class_labels <- sort(unique(Khan$ytrain))  
+
+# class-specific covariance matrices computation
+cov_list <- lapply(class_labels, function(cls) {
+  cov(Khan$xtrain[Khan$ytrain == cls, ])
+})
+
+norm_diff_12 <- norm(cov_list[[1]] - cov_list[[2]], type = "F")
+norm_diff_13 <- norm(cov_list[[1]] - cov_list[[3]], type = "F")
+norm_diff_14 <- norm(cov_list[[1]] - cov_list[[4]], type = "F")
+norm_diff_23 <- norm(cov_list[[2]] - cov_list[[3]], type = "F")
+norm_diff_24 <- norm(cov_list[[2]] - cov_list[[4]], type = "F")
+norm_diff_34 <- norm(cov_list[[3]] - cov_list[[4]], type = "F")
+
+cat("Frobenius norms of covariance differences:\n")
+cat("Class 1 vs 2:", norm_diff_12, "\n")
+cat("Class 1 vs 3:", norm_diff_13, "\n")
+cat("Class 1 vs 4:", norm_diff_14, "\n")
+cat("Class 2 vs 3:", norm_diff_23, "\n")
+cat("Class 2 vs 4:", norm_diff_24, "\n")
+cat("Class 3 vs 4:", norm_diff_34, "\n")
+
+
+```
+
+**Explanation:** Before choosing a classification method, I examined the structure of the Khan dataset. The training data consists of 63 samples with 2,308 gene expression features, creating a high-dimensional, low-sample-size setting. This makes class-specific covariance estimation highly unstable, which can cause methods like QDA or RDA with low regularization to fail or overfit. Additionally, when comparing class-specific covariance matrices using Frobenius norms, I found moderate differences ranging from approximately 318 to 375. These values suggest that while there are differences between class covariances, they are not extreme. Given this, and the practical need for stable covariance estimates, linear discriminant analysis (LDA)—which assumes a shared covariance matrix across classes—is a more appropriate and robust choice for this dataset. That is why I applied LDA first:
+
+```{r}
+library(klaR)
+library(ISLR2)
+
+results <- data.frame(lambda = numeric(), gamma = numeric(), accuracy = numeric())
+
+model <- lda(Khan$xtrain, grouping = Khan$ytrain)
+pred <- predict(model, Khan$xtest)
+acc <- mean(pred$class == Khan$ytest)
+      
+results <- rbind(results, data.frame( accuracy = acc))
+cat( "accuracy:", acc, "\n")
+
+```
+
+**Explanation:** While running LDA, a warning about collinear variables appeared. This is expected due to the high-dimensional nature of the data (2,308 features vs. 63 samples). However, the lda() function handles this by using a generalized inverse. Despite this issue, the model achieved 75% test accuracy, supporting the use of LDA for this dataset.
+
+RDA failed to perform better than chance across all combinations of lambda and gamma, consistently yielding 25% accuracy. This is likely due to the extremely high dimensionality (2,308 features) and small sample size, which makes reliable estimation of class-specific covariances difficult, even with regularization. In contrast, LDA assumes a shared covariance matrix and applies a pooled estimate, making it more robust in high-dimensional settings. Despite a warning about collinearity, LDA achieved 75% accuracy, supporting its suitability for this dataset.
+When I applied RDA, I got the following results:
+lambda: 0 gamma: 0.1 accuracy: 0.25 
+lambda: 0 gamma: 0.5 accuracy: 0.25 
+lambda: 0 gamma: 1 accuracy: 0.25 
+lambda: 0.5 gamma: 0.1 accuracy: 0.25 
+lambda: 0.5 gamma: 0.5 accuracy: 0.25 
+lambda: 0.5 gamma: 1 accuracy: 0.25 
+lambda: 1 gamma: 0.1 accuracy: 0.25 
+lambda: 1 gamma: 0.5 accuracy: 0.25 
+lambda: 1 gamma: 1 accuracy: 0.25 
+
+Best lambda: 0 Best gamma: 0.1 with Accuracy: 0.25 
+
+However, I did not put that code in this report since it takes too much time when knitting.
+
+2.   Apply a Naive Bayes classifier on the training data and estimate the prediction accuracy on the test data.
+
+**Solution:**
+
+```{r}
+library(klaR)
+library(ISLR2)
+
+data(Khan)
+xtrain_df <- as.data.frame(Khan$xtrain)
+xtest_df  <- as.data.frame(Khan$xtest)
+colnames(xtest_df) <- colnames(xtrain_df)
+
+ytrain_vec <- as.factor(Khan$ytrain)
+ytest_vec  <- Khan$ytest
+
+colnames(xtest_df) <- colnames(xtrain_df)
+
+nb_model <- NaiveBayes(xtrain_df, as.factor(ytrain_vec))
+
+nb_pred <- predict(nb_model, xtest_df)
+
+mean(nb_pred$class == ytest_vec)
+
+
+```
+__Explanation:__
+Naive Bayes fell short of LDA (75%), achieving 45% accuracy. I think this is because Naive Bayes' assumption that all features are conditionally independent given the class. It is unrealistic in Khan dataset due to high dimensionality and there are multicollinearity between the features. As a result, the model could not fully exploit the underlying structure in the data, leading to reduced classification performance.
+
+
+3.   Apply a support vector machine classifier on the training data and estimate the prediction accuracy on the test data. **Solution:**
+
+```{r}
+library(e1071)
+library(ISLR2)
+
+data(Khan)
+
+# convert to data frames 
+xtrain_df <- as.data.frame(Khan$xtrain)
+xtest_df  <- as.data.frame(Khan$xtest)
+
+# scale training data
+xtrain_scaled <- scale(xtrain_df)
+
+#  same scaling parameters for test data
+xtest_scaled <- scale(xtest_df, 
+                      center = attr(xtrain_scaled, "scaled:center"), 
+                      scale  = attr(xtrain_scaled, "scaled:scale"))
+
+xtrain_scaled_df <- as.data.frame(xtrain_scaled)
+xtest_scaled_df  <- as.data.frame(xtest_scaled)
+colnames(xtest_df) <- colnames(xtrain_df)
+
+ytrain_vec <- as.factor(Khan$ytrain)
+ytest_vec  <- Khan$ytest
+
+# train SVM
+svm_model <- svm(x = xtrain_df, y = ytrain_vec, kernel = "linear", cost = 1)
+
+# predict
+svm_pred <- predict(svm_model, xtest_df)
+
+accuracy <- mean(svm_pred == ytest_vec)
+print(paste("Test Accuracy:", round(accuracy * 100, 2), "%"))
+
+```
+
+__Explanation:__
+In this code, I applied z-score scaling to the training and test gene expression data to ensure all features contribute equally. Then, I trained a linear SVM using the original data. Finally, you predicted class labels on the unscaled test data and computed accuracy.
+
+The 90% accuracy indicates that the SVM was able to find a nearly optimal linear decision boundary. This suggests that the tumor classes in the high-dimensional gene expression space are well-separated and linearly distinguishable.
+
+
+4.   Apply a k-Nearest Neighbor classifier on the training data and estimate the prediction accuracy on the test data.
+
+**Solution:**
+
+```{r}
+library(ISLR2)
+library(class)
+
+# Load Khan data
+data(Khan)
+
+# Convert data to data frames
+xtrain_df <- as.data.frame(Khan$xtrain)
+xtest_df  <- as.data.frame(Khan$xtest)
+colnames(xtest_df) <- colnames(xtrain_df)
+
+# Prepare labels
+ytrain_vec <- as.factor(Khan$ytrain)
+ytest_vec  <- Khan$ytest
+
+for (k in c(1, 3, 5, 7)) {
+  knn_pred <- knn(train = xtrain_df, test = xtest_df, cl = ytrain_vec, k = k)
+  acc <- mean(knn_pred == ytest_vec)
+  print(paste("Accuracy for k =", k, ":", round(acc * 100, 2), "%"))
+}
+
+
+```
+__Explanation:__
+In this code, I applied the k-Nearest Neighbors (kNN) algorithm using the class package on the Khan gene expression dataset. First, I converted the training and test matrices into data frames and prepared the class labels. I then evaluated the classification accuracy for different values of k (1, 3, 5, 7) by comparing the predicted labels with the true test labels.
+
+The results showed that accuracy increased with larger 
+
+k:
+- k=1: 70%
+- k=3 and k=5: 90%
+- k=7: 95%
+This suggests that larger neighborhoods help smooth out noise and improve predictions.
+
+Among all methods, kNN with k=7 gave the highest accuracy (95%), followed closely by SVM (90%). Both methods handled the high-dimensional gene data well. LDA worked moderately well due to pooled covariance, while Naive Bayes underperformed due to its strong independence assumption.
+
+

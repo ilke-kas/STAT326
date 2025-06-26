@@ -1,0 +1,1139 @@
+---
+title: "Energy and Insurance Cost Modelling"
+author: "Ilke Kas"
+date: "2025-04-(18-19)"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document: default
+---
+
+
+
+# Problem 1: Insurance Data 
+
+__Attached is insurance.csv data file. This data consists of 1338 individual health insurance charges in different regional locations in the United States associated with 5 other predictors. The variable descriptions are given in Table 1.__
+
+# Table 1: Insurance Data Variable Descriptions
+
+| No. | Variable | Description                                                  |
+|-----|----------|--------------------------------------------------------------|
+| 1   | charges  | Insurance premium charge                                     |
+| 2   | age      | Age (years)                                                  |
+| 3   | sex      | Sex (female/male)                                            |
+| 4   | bmi      | Body mass index                                              |
+| 5   | children | Number of children                                           |
+| 6   | smoker   | Smoking status (Y/N)                                         |
+| 7   | region   | Location of the insured (northeast, northwest, southeast, southwest) |
+
+
+
+1. __Perform an exploratory analysis for this data.__
+
+__Solution:__ 
+
+```{r}
+# lets read the data first
+insurance_data <- read.csv("insurance.csv")
+head(insurance_data)
+```
+As seen, we read the insurance data from the provided .csv file. There are 7 different columns. Let's look at the summary of this dataset:
+```{r}
+# get the summary of the dataset
+library(skimr)
+skim(insurance_data)
+```
+In order to get the summary of this dataset, I used the skimr library since it is more organized compared to the summary. As seen from the data summary, the dataset contains 1,338 observations and 7 variables, including 3 categorical and 4 numeric features. There are no missing values, and all variables are fully complete. Among numeric variables, charges is highly skewed with a wide range (from ~1,122 to ~63,770), while age, bmi, and children are more symmetrically distributed. Categorical variables like sex, smoker, and region each have 2–4 unique levels, with no empty or whitespace issues.
+```{r}
+library(dplyr)
+
+#lets check the categorical data values 
+categorical_data <- insurance_data %>%
+  select(where(~ is.character(.x) || is.factor(.x)))
+
+
+
+for (col in names(categorical_data)) {
+  cat("\n---", col, "---\n")
+  print(table(categorical_data[[col]]))
+  print(prop.table(table(categorical_data[[col]])))
+}
+
+
+```
+The dataset has a nearly equal distribution of sex, with 49.5% female and 50.5% male participants. A majority of individuals are non-smokers (79.5%), while only 20.5% are smokers. The region variable is fairly balanced across all four areas, with the southeast region having a slightly higher proportion (27.2%).
+
+```{r}
+# Lets check the histogram of the continuos variables
+library(ggplot2)
+
+# Example: Histogram for 'age'
+ggplot(insurance_data, aes(x = age)) +
+  geom_histogram(fill = "skyblue", color = "white", bins = 20) +
+  labs(title = "Age Distribution", x = "Age", y = "Count")
+
+# Repeat for 'bmi' and 'charges'
+ggplot(insurance_data, aes(x = bmi)) +
+  geom_histogram(fill = "lightgreen", color = "white", bins = 20) +
+  labs(title = "BMI Distribution", x = "BMI", y = "Count")
+
+ggplot(insurance_data, aes(x = children)) +
+  geom_histogram(fill = "gray", color = "white", bins = 20) +
+  labs(title = "Children Distribution", x = "Children", y = "Count")
+
+ggplot(insurance_data, aes(x = charges)) +
+  geom_histogram(fill = "tomato", color = "white", bins = 20) +
+  labs(title = "Charges Distribution", x = "Charges", y = "Count")
+
+```
+
+**Age Distribution**:
+The age variable is fairly uniformly distributed across the range of 18 to 64, with no strong skewness or concentration around a particular age group. This suggests a well-balanced representation across different age brackets in the dataset.
+
+**BMI Distribution**:
+BMI shows a unimodal, right-skewed distribution centered around 30. Most individuals fall within the 25–35 BMI range. Based on my knowledge, high BMI indicates obesity (greater than 30). Therefore, this graph indicates a concentration in the overweight to mildly obese categories.
+
+**Children Distribution**:
+
+The number of children is heavily skewed toward zero, with the majority of individuals having no children. As the number of children increases, the count drops significantly, especially for 4 and 5 children, which are rare.
+
+**Charges Distribution**:
+The distribution of insurance charges is highly right-skewed, with most individuals paying under $20,000. A small number of outliers with charges over $50,000 indicate significant variability, likely influenced by the predictor variables.
+
+Since my label will be charges, I wanted to see how charges vary across different categorical variables like smoker, sex, region, and even children:
+
+```{r}
+boxplot(charges ~ smoker, data = insurance_data,
+        main = "Charges by Smoking Status", ylab = "Charges", col = c("lightblue", "salmon"))
+boxplot(charges ~ sex, data = insurance_data,
+        main = "Charges by Sex", ylab = "Charges", col = c("lightgreen", "plum"))
+boxplot(charges ~ region, data = insurance_data,
+        main = "Charges by Region", ylab = "Charges", col = "lightgray")
+boxplot(charges ~ children, data = insurance_data,
+        main = "Charges by Number of Children", ylab = "Charges", col = "lightpink")
+
+```
+
+**Charges by Smoking Status:* *Smokers have significantly higher charges compared to non-smokers, with their median charges around $42,000. Non-smokers have a much lower median. The spread is also wider for smokers. This indicates more variability in their charges. This suggests smoking can be a strong predictor of insurance cost.
+
+**Charges by Sex:** The median charges for males and females are relatively similar. Both distributions show a high number of outliers. There is no clear difference between sexes in terms of insurance charges. Therefore, I believe that sex might not be a strong factor on its own.
+
+
+**Charges by Region:** Charges are fairly consistent across all four regions, with no major shifts in medians. However, all regions exhibit numerous outliers. This shows a common presence of high-cost individuals across geographic areas.
+
+
+**Charges by Children:** The median charges do not vary dramatically with the number of children. However, there's a slight decrease for those with 4 or 5 children. Outliers are present across all groups. Variability is highest for those with 0–3 children since there are not many people that have 4-5 children. This suggests number of children  also may have minimal influence on charges.
+
+```{r}
+numeric_data <- insurance_data[, sapply(insurance_data, is.numeric)]
+cor_matrix <- cor(numeric_data)
+print(cor_matrix)
+
+library(corrplot)
+
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.col = "black", addCoef.col = "black")
+
+```
+
+The correlation matrix shows how the numeric variables in the dataset relate to each other. Among them, age has the strongest positive correlation with charges (0.30). So, we can interpret this as older people tend to have higher insurance costs. BMI also has a weak positive correlation with charges (0.20), suggesting a slight tendency for people with higher BMI to pay more. The number of children has almost no correlation with charges (0.07). Therefore, I could say that it doesn’t seem to affect insurance costs much. Overall, the correlations between the predictors themselves are low, so multicollinearity doesn’t seem to be an issue. 
+
+However, we know that the correlation matrix only shows linear relationships. For example, age and charges have a moderate linear correlation, but for other variables like children or BMI, even if their correlation is low, it doesn’t mean they have no impact — they might still affect charges in a nonlinear way or interact with other variables.
+
+```{r}
+pairs(insurance_data[, c("age", "bmi", "children", "charges")])
+```
+
+Based on the scatter plots, we can say that the relationship between age and charges appears to be positively curved, with older individuals tending to have higher charges, especially after a certain age. For BMI and charges, there isn’t a strong trend overall, but there are some individuals with high BMI and very high charges, which could suggest interaction effects (like high BMI + smoker). The number of children mostly creates horizontal bands because it's a discrete variable, and it doesn't seem to influence charges much on its own. 
+
+```{r}
+library(dplyr)
+
+insurance_data %>%
+  group_by(sex, region,smoker) %>%
+  summarize(mean_charges = mean(charges), .groups = "drop")%>%
+  arrange(mean_charges)
+
+```
+From the table, I can see that non-smokers have much lower average charges compared to smokers, no matter their sex or region. For example, non-smoking males in the southeast have the lowest average charges at around $7,600. Even among non-smokers, males usually pay a bit less than females, but the differences aren’t that big.
+
+Once I look at smokers, the average charges jump a lot. Female smokers in the southeast are paying over $33,000, and male smokers in the southeast have the highest at around $36,000. This shows that smoking is a huge factor in determining insurance charges — way more than sex or region.
+
+I look at this to understand how charges change across different groups and see which combinations lead to higher or lower costs.
+
+
+__2. Fit an appropriate linear model with charges as response and the remaining variables as predictors.__
+
+__Solution:__
+
+In this example, I did not continue with the best linear model. However, I tried different linear models:
+```{r}
+basic_lm_model <- lm(charges ~ age + bmi + children + sex + smoker + region, data = insurance_data)
+summary(basic_lm_model)
+plot(basic_lm_model)
+
+```
+
+```{r}
+interaction_lm <- lm(charges ~ age + bmi + children + sex + smoker + region + bmi*smoker, data = insurance_data)
+summary(interaction_lm )
+plot(interaction_lm ) 
+
+```
+
+```{r}
+squared_lm <- lm(charges ~ (age + bmi + children + sex + smoker + region)^2, data = insurance_data)
+summary(squared_lm)
+plot(squared_lm)
+```
+
+```{r}
+my_model <- lm(charges ~  children * region + sex + (age+smoker+bmi)^2 , data = insurance_data)
+summary(my_model)
+plot(my_model)
+
+```
+
+- Based on the p-value of the F-stat, the model is useful overall. That is, at least one predictor is relevant in predicting the charges value
+Based on the R2
+-Based on the adjusted, about 84% of the total variations in charges can be explained by its linear relationship with the predictors in the model.
+- It appears childen number and region are not significant in the model based on individual p-values. However, do not remove them from the model based on these marginal p-values.
+
+
+```{r}
+AIC(basic_lm_model,interaction_lm,squared_lm,my_model)
+```
+my_model is the best because it has the lowest AIC and the highest adjusted R², indicating strong model performance with good generalizability. Its residual plot shows the most random and balanced pattern, suggesting that it fits the data better than the other models. While there’s still some variance at higher charge values, overall, it provides the best balance between accuracy and interpretability.
+
+Based on the exploratory data analysis, I observed strong effects of variables like smoker, BMI, and age, as well as possible interactions. That’s why in my_model, I included interaction terms like (age + smoker + bmi)^2 and children * region, which reflect patterns seen in the boxplots, scatterplots, and grouped summaries. This model aligns well with the data structure and captures both main effects and interactions that appear important in predicting charges.
+
+However, to clearly observe the effects of the clustering and diagnostic steps in the later parts of this analysis, I used the simpler basic_lm_model instead of the more complex one for this analysis. So here are the few points for basic lm model:
+```{r}
+summary(basic_lm_model)
+```
+- Based on the p-value of the F-stat, the model is useful overall. That is, at least one predictor is relevant in predicting the charges value
+Based on the R2.
+-Based on the adjusted, about 75% of the total variations in charges can be explained by its linear relationship with the predictors in the model.
+- It appears that sex and the region are not significant in the model based on individual p-values. However, do not remove them from the model based on these marginal p-values.
+- Age, BMI, number of children, and smoker status are significant predictors of insurance charges.
+- Smoking having the largest impact (increasing charges by ~$23,800).
+
+
+__3. Perform residual diagnostics for the model in (ii) and explain your findings.__
+
+__Solution:__
+
+**Residual QQ Plot**:
+```{r}
+par(mfrow=c(1,2))
+plot(basic_lm_model,1:2)
+```
+
+Based on the Normal Q-Q Plot:
+
+- The residuals deviate from the diagonal line at both ends. This shows that the residuals are not normally distributed.
+
+- It shows heavy right tail (positive skew).
+
+Based on the Residuals vs. Fitted VAlues Graph:
+
+- Residuals are not randomly scattered. I can see a curve pattern, especially in the middle and higher fitted values. This shows some nonlinearity or potential model misspecification.
+
+- Points like 1301, 578, and 243 stand out as potential outliers.
+
+```{r}
+par(mfrow=c(1,2))
+plot(basic_lm_model,3:4)
+```
+Based on the scale-location plot:
+- The red line have trends upward. This means increasing variance in the residuals at higher fitted values. It is actually sign of heteroscedasticity. (Model is uneven spread for predicted values). So, error variance is not constant in opposite to the key assumption of linear regression.
+
+- Ideally, points should be randomly scattered with a flat red line in the scale location plot.
+
+- A few observations such as 1301, 243, and 578 show higher standardized residuals.Again, these are potential outliers.
+
+Based on the Cook's distance:
+
+- I searched and find that "Cook’s distance measures how much each observation influences the overall regression model."  
+- In this model, most points have low influence, but a few like 544, 578, and 1301 stand out slightly (again the outliers). 
+
+- So, to sum up, The model is not very good because the residual plots show non-constant variance, non-normal errors, and a few influential outliers, which all violate key assumptions of linear regression. It works, but it could definitely be improved.
+
+
+__4. Extract the residuals ϵ̂ and the model matrix (X) without the intercept from the model in (ii)__
+
+__Solution:__
+```{r}
+# extract the residuals
+residuals <- resid(basic_lm_model)
+head(residuals)
+
+```
+
+```{r}
+# extract the model matrix X without the intercept of my_Model in q2
+X <- model.matrix(basic_lm_model)[, -1]  
+head(X)
+```
+
+
+__5. Fit a linear model with ϵ̂² (squared residuals) as the response and X as the predictor__
+
+__Solution:__
+
+```{r}
+#  find squared residuals
+squared_residuals <- residuals^2
+
+# fit linear model  with ϵ̂² (squared residuals) as the response and X as the predictor
+squared_model <- lm(squared_residuals ~ X)
+summary(squared_model)
+
+```
+
+- Smoking is the only variable that significantly affects the squared residuals, meaning the model makes bigger errors when predicting charges for smokers. This shows that charges for smokers are harder to predict and more variable compared to non-smokers. 
+
+- All other predictors (age, BMI, children, sex, and region) are not statistically significant, meaning they do not explain the variation in residuals.
+
+- The R² is pretty low (0.09), which means the predictors only explain about 9% of the differences in the residuals. So, most of the variation in the model’s errors is still not explained.
+
+__6. What does the result in (v) suggest in terms of the assumption of independence between ϵ and X?__
+
+__Solution:__
+
+- We know that based on the key assumption of linear regression, the residuals (ϵ) are independent of the predictors (X). However, when we fit a model where the squared residuals were predicted using the original predictors in part (v), we see that smoker status was a significant predictor of the residual size. In other words, model tends to make larger errors for smokers. And this is statistically significant since the p-value is small. So, I can say that there is a statistically significant relationship between the residuals and the predictors (smoker variable).
+
+- So, this result suggests a violation of the independence assumption, since at least one predictor (smoker) appears to influence the residuals. Even though, this does only explain the 9% of the  differences in the residuals, it is still an important observation.
+
+
+__7. Perform cluster analysis on the matrix of residuals and fitted values, i.e., [ϵ̂, Xβ̂] from model (ii) using an appropriate clustering method and report the cluster frequencies.__
+__Solution:__
+
+```{r}
+library(factoextra)
+
+# find the fitted values fitted values
+fitted_vals <- fitted(basic_lm_model)
+
+# recreate the matrix  [residuals, fitted values]
+resid_fit_matrix <- cbind(residuals, fitted_vals)
+fviz_nbclust(resid_fit_matrix, kmeans, method="wss")
+```
+- The elbow plot suggests that 3 clusters is the optimal choice, as adding more beyond that gives only minor improvement in model fit.
+
+```{r}
+#  k-means clustering 
+set.seed(42) 
+kmeans_result <- kmeans(resid_fit_matrix, centers = 3)
+
+# cluster frequencies
+table(kmeans_result$cluster)
+```
+
+Based on the result of the k-means, data is cluster in 3 groups:
+
+- First cluster has 628 observations
+- Second cluster have 436 observations and
+- Third cluster have 274 observations
+- By looking into this distribution, one can easily say that majority of the observations are in cluster 1. 
+- Meanwhile, second and third clusters capture smaller subgroups with different residual–fitted value patterns.
+- The clustering on residuals and fitted values shows that there are different groups in the data where the model performs differently. This means the model might be missing some patterns, and there could be subgroups that aren’t fully captured by the current predictors.
+
+
+__8. Repeat the residual plots in (iii) and label the points based on the cluster assignments in (vii).__
+
+__Solution:__
+
+```{r}
+library(ggplot2)
+
+# data frame with fitted values, residuals, and cluster assignments
+resid_df <- data.frame(
+  Fitted = fitted(basic_lm_model),
+  Residuals = resid(basic_lm_model),
+  Cluster = as.factor(kmeans_result$cluster)
+)
+ggplot(resid_df, aes(x = Fitted, y = Residuals, color = Cluster)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Residuals vs Fitted (Clustered)", x = "Fitted Values", y = "Residuals") +
+  theme_minimal()
+```
+- Based on the clustered plot of residual vs. fitted value, red and green clusters have lower fitted values. For the green cluster (cluster 2), they have much larger positive residuals. THis may mean that my model is underpredicting charges for these cases.
+
+- On the other hand, Cluster 3 (blue) is concentrated at higher fitted values. I interpreted this as the model's predictions are less accurate and more variable for those high-charge individuals.
+
+```{r}
+# need to get standardized residuals
+standardized_resid <- rstandard(basic_lm_model)
+
+# theoretical quantiles from qqnorm()
+qq_data <- qqnorm(standardized_resid, plot.it = FALSE)
+
+# into a data frame
+resid_df <- data.frame(
+  Theoretical = qq_data$x,
+  Sample = qq_data$y,
+  Cluster = as.factor(kmeans_result$cluster)
+)
+
+# with labels and line
+library(ggplot2)
+ggplot(resid_df, aes(x = Theoretical, y = Sample, color = Cluster)) +
+  geom_point(alpha = 0.7) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(title = "Normal Q-Q Plot (Standardized Residuals by Cluster)",
+       x = "Theoretical Quantiles", y = "Standardized Residuals") +
+  theme_minimal()
+
+
+```
+  Based on the Normal Q-Q plot:
+  - Cluster 1 has residuals close to normal, while Clusters 2 and 3 deviate from normality with large positive residuals. Again this confirms that the model underestimates charges for those groups.
+  
+```{r}
+
+resid_df <- data.frame(
+  Fitted = fitted(basic_lm_model),
+  Std_Resid = rstandard(basic_lm_model),
+  Cluster = as.factor(kmeans_result$cluster)
+)
+
+#square root of absolute standardized residuals
+resid_df$Sqrt_Abs_Std_Resid <- sqrt(abs(resid_df$Std_Resid))
+
+ggplot(resid_df, aes(x = Fitted, y = Sqrt_Abs_Std_Resid, color = Cluster)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "loess", se = FALSE, color = "black", linewidth = 0.6) +
+  labs(title = "Scale-Location Plot (by Cluster)",
+       x = "Fitted Values",
+       y = "√|Standardized Residuals|") +
+  theme_minimal()
+
+
+```
+Based on the scale-location plot:
+
+- The model makes more scattered and less stable predictions for people with higher predicted charges, especially in Cluster . This shows the model's error grows as charges increase.
+
+
+```{r}
+# Cook's distances
+cooks <- cooks.distance(basic_lm_model)
+
+# Create a data frame with observation index
+cooks_df <- data.frame(
+  Obs = 1:length(cooks),
+  Cook = cooks,
+  Cluster = as.factor(kmeans_result$cluster)
+)
+
+# Plot
+ggplot(cooks_df, aes(x = Obs, y = Cook, color = Cluster)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  labs(title = "Cook's Distance by Observation (Clustered)",
+       x = "Observation Number",
+       y = "Cook's Distance") +
+  theme_minimal()
+
+```
+- This plot shows that most observations have low Cook’s distance, meaning they don’t heavily influence the model. However, a few ( mostly from Cluster 3) stand out slightly. This shows that they may have more impact on the model’s estimates.
+
+
+__9. Re-fit your linear model in (ii) and include the cluster labels as a categorical predictor. Perform residual diagnostics and report your findings.__
+
+__Solution:__
+```{r}
+# add cluster to dataset
+insurance_data$cluster <- as.factor(kmeans_result$cluster)
+
+# refit the model from (ii)
+model_with_cluster <- lm(charges ~ age + bmi + children + sex + smoker + region + cluster, data = insurance_data)
+
+summary(model_with_cluster)
+
+```
+- We can easily see from the summary that the model is improved.  Adjusted R² improved from 0.749 to 0.805, meaning the new model explains over 80% of the variation in charges — a significant improvement. However, it has still lower adjuster R^2 compared to my_model i found in (ii). 
+- The residual standard error decreased from around 6062 to 5345, indicating smaller prediction errors on average.
+- The new variable cluster2 is highly significant. THis shows that it captures meaningful differences in error patterns across groups that the original predictors missed. It is statistically significant. 
+
+- One can see that the cluster 3 is dropped since it did not provide new information which was already explained by the other predictors.
+
+```{r}
+
+# see why cluster 3 dropped
+model.matrix(~ cluster, data = insurance_data)[1:5, ]
+insurance_data %>%
+  group_by(cluster) %>%
+  summarise(
+    avg_age = mean(age),
+    avg_bmi = mean(bmi),
+    avg_charges = mean(charges),
+    smoker_rate = mean(smoker == "yes"),
+    male_rate = mean(sex == "male"),
+    .groups = "drop"
+  )
+X <- model.matrix(charges ~ age + bmi + children + sex + smoker + region + cluster, data = insurance_data)
+
+qr(X)$rank # actual rank
+ncol(X)         # total number of columns in the design matrix
+
+
+
+
+```
+Cluster 3 was dropped because it only contains smokers, and their characteristics — like higher charges, moderate age, and high BMI — are already explained by other predictors in the model. So, R found that adding cluster3 didn’t add any new information, making it redundant.
+
+__10. If the residual plots in (ix) are not adequate, increase the number of clusters in (vii) and repeat (ix) until the model is adequate. Once the model assumptions are fairly satisfied, proceed to summarize the results from model (xi) in one paragraph.__
+
+
+__Solution:__
+
+```{r}
+library(ggplot2)
+
+# Matrix for clustering
+resid_fit_matrix <- cbind(resid(basic_lm_model), fitted(basic_lm_model))
+
+# by looking at the graph in part (vii), optimal number of clusters, decided to test clusters from 4 to 6
+for (k in 4:6) {
+  cat("\nFitting model with", k, "clusters...\n")
+
+  # perform k-means
+  set.seed(42)
+  kmeans_result <- kmeans(resid_fit_matrix, centers = k)
+  insurance_data$cluster <- as.factor(kmeans_result$cluster)
+
+  # fit model with clusters
+  model_k <- lm(charges ~ age + bmi + children + sex + smoker + region + cluster, data = insurance_data)
+  summary_stats <- summary(model_k)
+  
+  # print summary info
+  cat("Adjusted R-squared:", summary_stats$adj.r.squared, "\n")
+  cat("Residual Std. Error:", summary_stats$sigma, "\n")
+  print(summary(model_k))
+
+  # plot Residuals vs Fitted
+  resid_df <- data.frame(
+    Fitted = fitted(model_k),
+    Residuals = resid(model_k),
+    Cluster = insurance_data$cluster
+  )
+  
+  print(
+    ggplot(resid_df, aes(x = Fitted, y = Residuals, color = Cluster)) +
+      geom_point(alpha = 0.7) +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      labs(title = paste("Residuals vs Fitted -", k, "Clusters")) +
+      theme_minimal()
+  )
+}
+
+```
+
+- The model with 6 clusters gave the highest adjusted R² (0.97). This means it explains almost all the variation in charges. It is much better than the earlier models where k=3,4 and 5.
+- Most predictors like age, BMI, number of children, and smoking status are still important and significant in this model.
+- The residuals are now more evenly spread around the zero line, with less curve or funnel shape, suggesting the linearity and constant variance assumptions are better satisfied.
+- Each cluster seems to group points with similar fitted values and residual patterns, helping to explain different behaviors in the data that the original model didn’t fully capture.
+- Cluster 6 is dropped probably due to its effect is already covered by other predictors again. 
+
+__11. Compare and explain the value of the R²-adjusted in models (ii) and (ix).__
+
+__Solution:__
+
+-  In model (ii) (the original model without clusters), the adjusted R² was about 0.749, meaning the model explained around 74.9% of the variability in insurance charges after adjusting for the number of predictors.
+
+ - In model (ix) (with 6 clusters added), the adjusted R² jumped to 0.9716, which shows that the updated model can now explain over 97% of the variation in charges.
+ 
+ However, I am afraid whether the model over fits or not. Therefore, as a final touch, I will perform predictions with both models ( basic linear and clustered with k = 6). 
+
+```{r}
+library(Metrics)
+
+# data split into train and test functions
+set.seed(42)
+sample_idx <- sample(nrow(insurance_data), 0.8 * nrow(insurance_data))
+train_data <- insurance_data[sample_idx, ]
+test_data <- insurance_data[-sample_idx, ]
+
+# get residuals and fitted values for training set (basic model)
+basic_model_train <- lm(charges ~ age + bmi + children + sex + smoker + region, data = train_data)
+resid_fit_matrix <- cbind(resid(basic_model_train), fitted(basic_model_train))
+
+# perform k-means clustering on training residuals and fitted values
+set.seed(42)
+kmeans_result <- kmeans(resid_fit_matrix, centers = 6)
+train_data$cluster <- as.factor(kmeans_result$cluster)
+
+#train both models
+model_basic <- lm(charges ~ age + bmi + children + sex + smoker + region, data = train_data)
+model_clustered <- lm(charges ~ age + bmi + children + sex + smoker + region + cluster, data = train_data)
+
+# assign clusters to test set based on nearest center (this is approximate)
+basic_model_test <- lm(charges ~ age + bmi + children + sex + smoker + region, data = test_data)
+test_resid_fit <- cbind(resid(basic_model_test), fitted(basic_model_test))
+
+# assign clusters to test set (find nearest cluster center)
+assign_clusters <- function(points, centers) {
+  apply(points, 1, function(p) {
+    which.min(colSums((t(centers) - p)^2))
+  })
+}
+test_data$cluster <- as.factor(assign_clusters(test_resid_fit, kmeans_result$centers))
+
+# predict on test set
+pred_basic <- predict(model_basic, newdata = test_data)
+pred_clustered <- predict(model_clustered, newdata = test_data)
+
+print("Basic Linear Model (ii)")
+do.call(cbind, pracma::rmserr(test_data$charges, pred_basic))
+print("Clustered Model k = 6 Model (iv)")
+do.call(cbind, pracma::rmserr(test_data$charges, pred_clustered))
+
+
+```
+
+To sum up, the clustered model is a major improvement. It's more accurate, more consistent, and better at capturing complex patterns in the data. While the basic model struggled with large errors and group differences, adding clusters helped the model learn those differences and make predictions that are both closer to reality and more reliable.
+
+# Problem 2: Energy Data
+
+Attached is energy.csv data file. This data is simulated in Ecotect for
+assessing the heating load requirements of 12 different building shapes. The
+data consist of 768 observations with 9 variables described in Table 2.
+
+# Table 2: Energy Data Variable Descriptions
+
+| No. | Variable   Description | 
+|-----|------------------------|
+| 1   | heating load           |                          
+| 2   | relative compactness   |                          
+| 3   | surface area           |                          
+| 4   | wall area              |                          
+| 5   | roof area              |                          
+| 6   | overall height         |              
+| 7   | orientation            |                          
+| 8   | glazing area           |                          
+| 9   | glazing area distribution |                       
+
+
+__1. Perform an exploratory analysis for this data.__
+
+__Solution:__
+
+```{r}
+# lets read the data first
+energy_data <- read.csv("energy.csv")
+head(energy_data)
+```
+
+```{r}
+# get the summary of the dataset
+library(skimr)
+skim(energy_data)
+```
+To explore the energy dataset, I used the skimr package because it gives a more organized and detailed summary than the basic summary() function. The dataset contains 768 observations and 9 numeric variables, with no missing values, meaning it's completely clean. The target variable, HeatingLoad, is right-skewed and ranges from around 10.9 to 48.0, showing that some buildings require much more energy than others. Variables like relative compactness, surface area, and wall area are fairly symmetric, while overall height appears to be bimodal, likely representing two types of building designs. Other features like orientation, glazing area, and glazing distribution also vary in structured ways, which could be helpful for predicting energy efficiency.
+
+
+```{r}
+# Lets check the histogram of the continuos variables
+library(ggplot2)
+
+# Example: Histogram for 'age'
+ggplot(energy_data, aes(x = relative_compactness)) +
+  geom_histogram(fill = "skyblue", color = "white", bins = 20) +
+  labs(title = "relative_compactness Distribution", x = "relative_compactness", y = "Count")
+
+# Repeat for 'bmi' and 'charges'
+ggplot(energy_data, aes(x = surface_area)) +
+  geom_histogram(fill = "lightgreen", color = "white", bins = 20) +
+  labs(title = "surface_area Distribution", x = "surface_area", y = "Count")
+
+ggplot(energy_data, aes(x = wall_area)) +
+  geom_histogram(fill = "gray", color = "white", bins = 20) +
+  labs(title = "wall_area Distribution", x = "wall_area", y = "Count")
+
+ggplot(energy_data, aes(x = roof_area)) +
+  geom_histogram(fill = "tomato", color = "white", bins = 20) +
+  labs(title = "roof_area Distribution", x = "roof_area", y = "Count")
+
+ggplot(energy_data, aes(x = overall_height)) +
+  geom_histogram(fill = "pink", color = "white", bins = 20) +
+  labs(title = "overall_height Distribution", x = "overall_height", y = "Count")
+
+ggplot(energy_data, aes(x = orientation)) +
+  geom_histogram(fill = "black", color = "white", bins = 20) +
+  labs(title = "orientation Distribution", x = "orientation", y = "Count")
+
+ggplot(energy_data, aes(x = glazing_area)) +
+  geom_histogram(fill = "yellow", color = "white", bins = 20) +
+  labs(title = "glazing_area Distribution", x = "glazing_area", y = "Count")
+
+ggplot(energy_data, aes(x = glazing_distribution)) +
+  geom_histogram(fill = "orange", color = "white", bins = 20) +
+  labs(title = "glazing_distribution Distribution", x = "glazing_distribution", y = "Count")
+
+```
+
+**Relative Compactness Distribution:**
+The distribution of relative compactness appears uniform across its range from ~0.62 to ~0.98, with each bin containing a similar number of observations. This suggests the dataset was likely designed or sampled to equally represent different building compactness levels.
+
+**Surface Area Distribution:**
+Like relative compactness, surface area is uniformly distributed from ~510 to ~810, meaning all surface sizes are equally represented. This might help in evaluating the impact of surface area on heating load without bias toward a specific size range.
+
+**Wall Area Distribution:**
+Wall area shows a bimodal distribution with two peaks around 300 and 310, and fewer buildings at the lower and higher ends. This indicates that most buildings have medium-sized wall areas, with some variety on both ends.
+
+**Roof Area Distribution:**
+This variable has a discrete distribution with just a few distinct values, and a very strong peak at ~220. That means most buildings share the same roof area, likely due to specific architectural standards or simulation design.
+
+**Overall Height Distribution:**
+The dataset includes only two height levels (3.5 and 7), with equal representation. This clearly indicates that buildings are either single- or double-story, and both are evenly distributed.
+
+**Orientation Distribution:**
+Orientation values range from 2 to 5 and are perfectly balanced, with an equal number of observations for each. This ensures that each directional orientation is equally studied, useful for analyzing sunlight effects.
+
+**Glazing Area Distribution:**
+The glazing area has four dominant levels (0, 0.1, 0.25, and 0.4), with no values in between. Most buildings include some glazing, but the variety is limited to discrete options, which is common in simulation datasets.
+
+**Glazing Distribution:**
+Glazing distribution also follows a discrete pattern from 0 to 5, with a slightly lower count at 0 and equal representation across levels 1–5. This shows variation in how glazing is applied spatially on buildings, offering insights into design variation.
+
+In this analysis, I will treat orientation and glazing_area_distribution as categorical variables because they represent discrete, non-continuous values that correspond to distinct categories rather than numeric magnitudes. Orientation indicates the direction a building faces (e.g., north, east), which has qualitative implications on energy use rather than a linear numeric relationship. Similarly, glazing_area_distribution represents predefined types of window placements, which are categorical in nature and should not be interpreted as continuous numerical values. Converting these variables to factors allows the model to properly account for their distinct levels without imposing a false numeric order. I also treat overall_height as categorical. 
+
+```{r}
+# Convert to factors
+energy_data$orientation <- as.factor(energy_data$orientation)
+energy_data$glazing_distribution <- as.factor(energy_data$glazing_distribution)
+energy_data$overall_height <- as.factor(energy_data$overall_height)
+
+# Check structure to confirm
+str(energy_data)
+
+
+```
+
+```{r}
+numeric_data <- energy_data[, sapply(energy_data, is.numeric)]
+cor_matrix <- cor(numeric_data)
+print(cor_matrix)
+
+library(corrplot)
+# Bigger and clearer corrplot
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         tl.col = "black", 
+         tl.cex = 0.9,          # text label size
+         number.cex = 0.7,      # correlation coefficient size
+         addCoef.col = "black",
+         mar = c(0, 0, 1, 0))   # reduce margins if needed
+
+```
+- There are strong correlations among some building design features — for example, relative compactness, surface area, roof area are highly related to each other.
+
+- HeatingLoad is most positively correlated with relative compactness (0.63), and most negatively correlated with roof area (-0.86) and surface area (-0.67).
+
+
+```{r}
+pairs(energy_data)
+```
+
+- There's a clear negative linear relationship between relative compactness and surface area, and also between relative compactness and roof area.
+- Surface area and roof area are positively correlated.
+- HeatingLoad increases with relative compactness, consistent with earlier correlations.
+- Wall area, orientation, glazing area, and glazing distribution don’t show clear linear relationships with HeatingLoad, indicating their effects may be weaker or non-linear.
+
+```{r}
+# Orientation vs Heating Load
+boxplot(HeatingLoad ~ orientation, data = energy_data,
+        main = "Heating Load by Orientation", 
+        ylab = "Heating Load", xlab = "Orientation",
+        col = "lightblue")
+
+# Glazing Distribution vs Heating Load
+boxplot(HeatingLoad ~ glazing_distribution, data = energy_data,
+        main = "Heating Load by Glazing Distribution", 
+        ylab = "Heating Load", xlab = "Glazing Distribution",
+        col = "lightgreen")
+
+# Overall Height vs Heating Load
+boxplot(HeatingLoad ~ overall_height, data = energy_data,
+        main = "Heating Load by Overall Height", 
+        ylab = "Heating Load", xlab = "Overall Height",
+        col = "lightpink")
+
+
+```
+- Orientation: Heating load is consistent across all orientation categories.It shows no strong influence of orientation on heating demand.
+
+- Glazing Distribution: Higher glazing distribution levels generally have a slightly higher median heating load, especially when compared to 0 (no glazing).
+
+- Overall Height: Buildings with an overall height of 7 have significantly higher heating loads than those with a height of 3.5. THis shows that height is an important factor.
+
+__2.  Fit an appropriate linear model with heating load as response and the remaining variables as predictors.__
+
+__Solution:__
+In this example, I did not continue with the best linear model. I used the most basic linear model:
+```{r}
+basic_lm_model  <- lm(HeatingLoad ~ ., data = energy_data)
+summary(basic_lm_model)
+plot(basic_lm_model)
+
+```
+
+__3.  What is the likely cause of the NA’s in the parameter estimates? Explain!__
+
+__Solution:__
+
+- roof_area is dropped since it can be linearly linearly dependent on variables like relative_compactness, surface_area, or overall_height as we saw in the correlation matrix on part (i). When one variable can be exactly or nearly exactly calculated from others, R automatically drops it from the model to avoid singularity issues in matrix inversion during model estimation. That is why we saw NA in the roof_area part in the model summary. 
+
+__4.  What formal check can be used to confirm the issue you stated in (iii)?__
+
+__Solution:__
+
+As a formal check to the issue stated in part (iii), as mentioned correlation can be performed. 
+```{r}
+numeric_data <- energy_data[, sapply(energy_data, is.numeric)]
+cor_matrix <- cor(numeric_data)
+print(cor_matrix)
+
+library(corrplot)
+# Bigger and clearer corrplot
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         tl.col = "black", 
+         tl.cex = 0.9,          # text label size
+         number.cex = 0.7,      # correlation coefficient size
+         addCoef.col = "black",
+         mar = c(0, 0, 1, 0))   # reduce margins if needed
+
+```
+
+- As seen, there is a stong relationship between roof_area and relative_compactness: -0.87, roof_area and surface_area: 0.88 and. These corrlation values show us the linearly dependence between the predictor variables. 
+
+As a second formal check, the rank of the model matrix can be calculated. 
+
+```{r}
+# Get the model matrix
+X <- model.matrix(basic_lm_model)
+
+# Compute the rank
+qr(X)$rank
+
+ncol(X)
+
+```
+- qr(X)$rank
+This computes the rank of the model matrix X using QR decomposition. The rank tells you how many linearly independent columns are in the matrix. If the rank is less than the number of columns, that means some variables are perfectly collinear (i.e., redundant).
+
+- ncol(X)
+This returns the number of columns in the model matrix, which includes the intercept and all predictors used in the model.
+
+Comparing these two helped me to detect perfect multicollinearity. If qr(X)$rank < ncol(X), one or more predictors are not estimable and are dropped automatically by R during model fitting.
+
+```{r}
+alias(basic_lm_model)
+```
+
+- alias(basic_lm_model) shows which variables are perfectly predictable from others in the model — a condition known as perfect multicollinearity.
+
+-  It confirms that roof_area is a linear combination of surface_area and wall_area. That's why it was dropped from the model
+
+__5.  Refit the model in (ii) without the variable(s) whose parameters are not estimable.__
+
+__Solution:__
+
+```{r}
+# Refit the model without roof_area
+model_refit <- lm(HeatingLoad ~ . -roof_area,
+                  data = energy_data)
+
+# View summary
+summary(model_refit)
+
+```
+After removing roof_area, the model became full rank and all parameters were estimable. 
+
+-Based on the p-value of the F-statistic, the model is statistically significant overall. That is, at least one predictor is useful in explaining variation in the heating load.
+
+- Based on the p-value of the F-statistic, the overall model is highly significant — meaning at least one of the predictors helps explain the variation in heating load.
+
+- The adjusted R² is approximately 88.9%, indicating that a large portion of the variability in heating load is explained by the model’s predictors.
+
+- Some orientation variables (levels 3, 4, and 5) appear statistically insignificant based on their individual p-values. However, we should not remove them just based on these p-values — it’s better to test their collective contribution with model comparison or an F-test.
+
+
+__6.  Perform a residual diagnostics and explain your findings.__
+
+__Solution:__
+
+```{r}
+plot(model_refit)
+```
+**Residuals vs Fitted Plot**
+
+- The residuals do not appear evenly scattered around zero — instead, they show a clear pattern with curved structure, indicating potential non-linearity.
+
+- This suggests the linear model may not fully capture the relationship between the predictors and the response.
+
+**Q-Q Plot of Standardized Residuals**
+
+-The residuals deviate significantly from the diagonal line, especially at the tails — both the lower and upper ends curve away.
+
+- This indicates that the residuals are not normally distributed, violating the normality assumption. It has right-skewness.
+
+
+**Scale-Location Plot**
+
+-The red trend line gradually increases as fitted values grow, which suggests slightly increasing variance of residuals at higher predicted heating load levels.  It indicates mild heteroscedasticity.
+
+
+**Residuals vs Leverage Plot**
+- Few points (like 20 and 690) has high leverage and a large residual, meaning it might have a strong influence on the model's predictions.
+
+__7.  How will you resolve the issue with the residuals? Explain!__
+
+__Solution:__
+
+Firstly, I would try more flexible model with interaction and polnomial terms first as in the following. 
+
+```{r}
+trial <-lm(HeatingLoad ~ (relative_compactness + surface_area + wall_area + glazing_area )^2 +
+   overall_height + orientation+ glazing_distribution, data = energy_data)
+summary(trial)
+
+```
+-After including second-order interaction terms between key continuous predictors, the adjusted R² increased to 90.7%, meaning the model explains more variation in heating load compared to the basic linear model.
+
+-The inclusion of interactions like relative_compactness:glazing_area or surface_area:wall_area helps the model better capture complex relationships, improving both fit and predictive power.
+
+Secondly, as we did in the question 1, I would apply to clustering to the residuals and do the same exact thing we did in question 1. 
+
+```{r}
+library(factoextra)
+resid_trial <- residuals(model_refit)
+fitted_trial <- fitted(model_refit)
+
+# Create matrix for clustering
+resid_fit_matrix <- cbind(resid_trial, fitted_trial)
+fviz_nbclust(resid_fit_matrix, kmeans, method="wss")
+
+```
+```{r}
+set.seed(42)
+kmeans_result <- kmeans(resid_fit_matrix, centers = 3)
+
+# Add cluster labels to your dataset
+energy_data$cluster <- as.factor(kmeans_result$cluster)
+table(energy_data$cluster)
+
+```
+
+```{r}
+trial_clustered <- lm(HeatingLoad ~ relative_compactness + surface_area + wall_area + glazing_area +
+                        overall_height + orientation + glazing_distribution + cluster,
+                      data = energy_data)
+
+summary(trial_clustered)
+
+
+```
+- Adding residual clusters as a predictor helped explain previously unaccounted variation, improving model accuracy and capturing subtle structure in the data. This suggests the original residuals contained meaningful group differences the base model missed.
+
+__8.  Based on the model in (v), select the important variables needed to predict the heating load using a non-shrinkage technique.__
+
+__Solution:__
+
+```{r}
+# Stepwise selection
+library(MASS)
+step_model <- stepAIC(model_refit, direction = "both", trace = FALSE)
+
+# View selected model
+summary(step_model)
+
+```
+I used stepwise regression based on AIC, which is a non-shrinkage method that selects variables by adding or removing them based on their contribution to model fit. Starting from the full model, the algorithm selected the most important predictors without penalizing coefficients. The final model includes:
+
+- relative_compactness
+
+- surface_area
+
+- wall_area
+
+- overall_height
+
+- glazing_area
+
+- All levels of glazing_distribution
+
+These predictors showed statistically significant effects and helped achieve an adjusted R² of 88.8%, confirming their relevance in predicting heating load. Orientation was excluded, suggesting it did not contribute meaningfully to the model.
+
+__9.  Based on the model in (v), select the important variables needed to predict the heating load using a shrinkage technique.__
+
+__Solution:__
+
+```{r}
+library(glmnet)
+
+# Prepare the data
+X <- model.matrix(model_refit)[, -1]  # Remove the first column (intercept)
+y <- energy_data$HeatingLoad
+
+# Fit LASSO model using cross-validation
+cv_lasso <- cv.glmnet(X, y, alpha = 1)
+
+# Get best lambda
+best_lambda <- cv_lasso$lambda.min
+print(best_lambda)
+# Fit final LASSO model
+lasso_model <- glmnet(X, y, alpha = 1, lambda = best_lambda)
+
+# Show coefficients
+coef(lasso_model)
+# Predict using the LASSO model
+lasso_preds <- predict(lasso_model, s = best_lambda, newx = X)
+
+# Compute SSE and SST
+sse <- sum((y - lasso_preds)^2)
+sst <- sum((y - mean(y))^2)
+
+# Compute R-squared
+r_squared <- 1 - (sse / sst)
+
+# Count the number of non-zero coefficients (excluding the intercept)
+p <- sum(coef(lasso_model)[-1] != 0)
+n <- length(y)
+
+# Compute adjusted R-squared
+adj_r_squared <- 1 - (1 - r_squared) * (n - 1) / (n - p - 1)
+
+# Print adjusted R-squared
+cat("Adjusted R-squared for LASSO:", round(adj_r_squared, 4), "\n")
+
+```
+- The LASSO model selected all predictors, meaning none were shrunk to exactly zero — but their coefficients are slightly smaller than in the regular linear model due to penalization.
+- key variables like relative_compactness, glazing_area, and overall_height7 still have strong influence, with large absolute coefficients, showing they are the most important predictors.
+- no predictors are eliminated in the shrinkage method. 
+
+__10. Select the best model based on your results in (viii) and (ix) and justify your answer.__
+
+__Solution:__
+
+Based on the results of (viii) and (ix), I would choose LASSO Model due to this reasons: 
+**Stepwise Regression**
+-Selects predictors based on AIC without applying any penalty, resulting in a simpler model by excluding non-contributing variables like orientation.
+
+-Achieved a strong adjusted R² of 0.8883, indicating good explanatory power with fewer predictors.
+
+**LASSO Regression**
+-Retains all predictors but shrinks less important coefficients, helping reduce overfitting while keeping model complexity under control.
+
+-Slightly higher adjusted R² of 0.8885, and better generalization through regularization.
+
+I would choose LASSO because: 
+Although both models performed similarly, LASSO is preferred because it offers slightly better accuracy and includes built-in regularization, making it more robust for prediction on new data. As a prrof of it, I also did comparision on train-test data for both models: 
+
+```{r}
+energy_data <- read.csv("energy.csv")
+energy_data$orientation <- as.factor(energy_data$orientation)
+energy_data$glazing_distribution <- as.factor(energy_data$glazing_distribution)
+energy_data$overall_height <- as.factor(energy_data$overall_height)
+set.seed(42)
+sample_idx <- sample(1:nrow(energy_data), size = 0.8 * nrow(energy_data))
+train_data <- energy_data[sample_idx, ]
+test_data <- energy_data[-sample_idx, ]
+step_model <- stepAIC(lm(HeatingLoad ~ relative_compactness + surface_area + wall_area + glazing_area +
+                           overall_height + orientation + glazing_distribution,
+                         data = train_data),
+                      direction = "both", trace = FALSE)
+
+step_preds <- predict(step_model, newdata = test_data)
+library(glmnet)
+
+# Model matrix for training
+X_train <- model.matrix(HeatingLoad ~ relative_compactness + surface_area + wall_area + glazing_area +
+                          overall_height + orientation + glazing_distribution, data = train_data)[, -1]
+y_train <- train_data$HeatingLoad
+
+# Model matrix for test
+X_test <- model.matrix(HeatingLoad ~ relative_compactness + surface_area + wall_area + glazing_area +
+                         overall_height + orientation + glazing_distribution, data = test_data)[, -1]
+y_test <- test_data$HeatingLoad
+
+# Cross-validation for LASSO
+cv_lasso <- cv.glmnet(X_train, y_train, alpha = 1)
+best_lambda <- cv_lasso$lambda.min
+
+# Final LASSO model and prediction
+lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = best_lambda)
+lasso_preds <- predict(lasso_model, newx = X_test)
+library(Metrics)
+
+print("LASSO")
+do.call(cbind, pracma::rmserr(y_test, lasso_preds))
+print("Stepwise")
+do.call(cbind, pracma::rmserr(y_test, step_preds))
+
+```
+- The LASSO model achieved slightly better performance across all metrics compared to stepwise regression — lower RMSE (3.09 vs. 3.11), MAE (2.17 vs. 2.20), MAPE (8.78% vs. 8.84%), and NMSE (0.1061 vs. 0.1075) — which supports its selection as the preferred model.
+
+__11.  Partition your data into 60% training set and 40% test set. Report the average root mean squared error (RMSE) and mean absolute error (MAE) for 200 random partitions.__
+
+__Solution:__
+
+```{r}
+library(glmnet)
+
+# Prepare data
+X <- model.matrix(HeatingLoad ~ ., data = energy_data)[, -1]  # remove intercept
+y <- energy_data$HeatingLoad
+
+set.seed(42)
+n <- nrow(energy_data)
+n_train <- floor(0.6 * n)
+
+rmse_list <- c()
+mae_list <- c()
+
+for (i in 1:200) {
+  train_idx <- sample(1:n, n_train)
+  test_idx <- setdiff(1:n, train_idx)
+  
+  X_train <- X[train_idx, ]
+  y_train <- y[train_idx]
+  X_test <- X[test_idx, ]
+  y_test <- y[test_idx]
+  
+  # Cross-validated LASSO on training set
+  cv_fit <- cv.glmnet(X_train, y_train, alpha = 1)
+  best_lambda <- cv_fit$lambda.min
+  
+  # Predict 
+  pred <- predict(cv_fit, s = best_lambda, newx = X_test)
+  
+  # metrics
+  rmse_list[i] <- sqrt(mean((y_test - pred)^2))
+  mae_list[i] <- mean(abs(y_test - pred))
+}
+
+#  average metrics
+mean_rmse <- mean(rmse_list)
+mean_mae <- mean(mae_list)
+
+cat("Average RMSE over 200 splits:", round(mean_rmse, 4), "\n")
+cat("Average MAE over 200 splits:", round(mean_mae, 4), "\n")
+
+```
+
+After performing 200 random train-test splits (with 60% for training and 40% for testing), the LASSO regression model produced the following average performance metrics:
+
+- Average Root Mean Squared Error (RMSE): 3.2091
+This value indicates the typical size of prediction errors. A lower RMSE means the model’s predictions are close to the actual heating load values. Compared to earlier values, this suggests consistent and reliable performance across different data partitions.
+
+- Average Mean Absolute Error (MAE): 2.2869
+MAE measures the average magnitude of errors in a more interpretable way. The average predicted heating load differs from the actual value by around 2.29 units. This is low, which supports the accuracy of the model.
+
+These averaged metrics across multiple splits confirm that the LASSO model generalizes well to unseen data. 
+
+
